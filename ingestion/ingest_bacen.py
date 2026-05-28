@@ -1,15 +1,15 @@
 """
-Ingestão de séries temporais via API SGS/Banco Central do Brasil.
+Ingestao de series temporais via API SGS/Banco Central do Brasil.
 
-API pública, sem autenticação. Documentação:
+API publica, sem autenticacao. Documentacao:
 https://www.bcb.gov.br/htms/sgs/help.pdf
 
-Séries ingeridas:
-  11   -> Selic diária (% a.a.)
-  433  -> IPCA mensal (variação %)
-  1    -> USD/BRL diário (venda)
-  189  -> IGP-M mensal (variação %)
-  4189 -> CDI diário (% a.a.)
+Series ingeridas:
+  11   -> Selic diaria (% a.a.)
+  433  -> IPCA mensal (variacao %)
+  1    -> USD/BRL diario (venda)
+  189  -> IGP-M mensal (variacao %)
+  4189 -> CDI diario (% a.a.)
   7811 -> Juro real ex-ante mensal (% a.a.)
 """
 
@@ -18,7 +18,7 @@ import logging
 import duckdb
 import requests
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -68,7 +68,7 @@ def fetch_series(series_code: int, start_date: str, end_date: str) -> pd.DataFra
     df["series_name"] = meta["name"]
     df["frequency"]   = meta["frequency"]
     df["unit"]        = meta["unit"]
-    df["ingested_at"] = datetime.utcnow()
+    df["ingested_at"] = datetime.now(timezone.utc)
 
     return df[["series_code", "series_name", "frequency", "unit", "date", "value", "ingested_at"]]
 
@@ -76,8 +76,8 @@ def fetch_series(series_code: int, start_date: str, end_date: str) -> pd.DataFra
 def load_to_duckdb(df: pd.DataFrame, conn: duckdb.DuckDBPyConnection) -> None:
     """
     Upsert idempotente com INSERT OR REPLACE.
-    Chave primária composta: (series_code, date).
-    Re-rodar a ingestão nunca duplica registros.
+    Chave primaria composta: (series_code, date).
+    Re-rodar a ingestao nunca duplica registros.
     """
     conn.execute("""
         CREATE TABLE IF NOT EXISTS raw.bacen_series (

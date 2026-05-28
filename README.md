@@ -31,7 +31,7 @@
 | Feature | Arquivo |
 |---|---|
 | Ingestao de dados macroeconomicos via API BACEN | `ingestion/ingest_bacen.py` |
-| Ingestao de cotacoes B3 via yfinance | `ingestion/ingest_market.py` |
+| Ingestao de cotacoes B3 via Brapi (brapi.dev) | `ingestion/ingest_market.py` |
 | Orquestracao com Apache Airflow + Docker Compose | `orchestration/` |
 | Pipeline automatizado via Makefile | `Makefile` |
 | pre-commit hooks (trailing whitespace, YAML, sqlfluff) | `.pre-commit-config.yaml` |
@@ -42,7 +42,7 @@
 
 ```
 API SGS/BACEN  →  raw.bacen_series
-yfinance/B3    →  raw.market_prices
+Brapi/B3       →  raw.market_prices
                         │
                    STAGING (views)
               stg_bacen_series | stg_market_prices
@@ -89,7 +89,7 @@ source .dbt-env/Scripts/activate   # Windows/Git Bash
 
 ```bash
 cp .env.example .env
-# Edite o .env se quiser alterar datas ou tickers — os valores padrao ja funcionam
+# Os valores padrao ja funcionam — nenhuma edicao necessaria
 ```
 
 ### 4. Rode a ingestao de dados
@@ -98,8 +98,8 @@ cp .env.example .env
 make ingest
 ```
 
-Isso busca series macroeconomicas do BACEN (Selic, IPCA, CDI, USD/BRL, IGP-M, juro real)
-e cotacoes historicas de 6 tickers B3 via Yahoo Finance.
+Busca series macroeconomicas do BACEN (Selic, IPCA, CDI, USD/BRL, IGP-M, juro real)
+e cotacoes historicas de 4 tickers B3 via Brapi — **sem necessidade de token ou cadastro**.
 
 ### 5. Execute o pipeline dbt
 
@@ -164,7 +164,7 @@ financial-dw-dbt/
 │   ├── seeds/              dim_calendar.csv
 │   ├── dbt_project.yml
 │   ├── packages.yml
-│   └── profiles.yml        (nao versionado — gerenciado via DBT_PROFILES_DIR)
+│   └── profiles.yml
 ├── ingestion/              ingest_bacen.py, ingest_market.py, generate_calendar.py
 ├── orchestration/
 │   ├── dags/               financial_pipeline.py

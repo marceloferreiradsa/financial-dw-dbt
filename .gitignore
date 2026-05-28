@@ -29,3 +29,6 @@ dbt_project/profiles.yml
 .DS_Store
 Thumbs.db
 structure.txt
+
+# Testing
+testing/
