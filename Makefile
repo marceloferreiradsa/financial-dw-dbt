@@ -1,9 +1,10 @@
-# ── Configuração ──────────────────────────────────────────────────────────────
-VENV        := .dbt-env
-PYTHON      := $(VENV)/Scripts/python
-PIP         := $(VENV)/Scripts/pip
-DBT         := $(VENV)/Scripts/dbt
+# ── Configuracao ──────────────────────────────────────────────────────────────
+VENV         := .dbt-env
+PYTHON       := $(VENV)/Scripts/python
+PIP          := $(VENV)/Scripts/pip
+DBT          := $(VENV)/Scripts/dbt
 PROFILES_DIR := $(CURDIR)/dbt_project
+DBT_CMD      := DBT_PROFILES_DIR=$(PROFILES_DIR) DUCKDB_PATH=$(CURDIR)/data/financial_dw.duckdb $(DBT)
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 .PHONY: setup
@@ -15,7 +16,7 @@ setup:
 	mkdir -p data
 	@echo "Setup concluido. Ative o venv: source $(VENV)/Scripts/activate"
 
-# ── Ingestão ──────────────────────────────────────────────────────────────────
+# ── Ingestao ──────────────────────────────────────────────────────────────────
 .PHONY: ingest
 ingest:
 	$(PYTHON) ingestion/generate_calendar.py
@@ -23,27 +24,28 @@ ingest:
 	$(PYTHON) ingestion/ingest_market.py
 
 # ── dbt ───────────────────────────────────────────────────────────────────────
-.PHONY: deps seed build test docs
+.PHONY: deps seed build test docs fix
 deps:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) deps --project-dir dbt_project
+	$(DBT_CMD) deps --project-dir dbt_project
 
 seed:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) seed --project-dir dbt_project
+	$(DBT_CMD) seed --project-dir dbt_project
 
 build:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) build --project-dir dbt_project
+	$(DBT_CMD) build --project-dir dbt_project
 
 test:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) test --project-dir dbt_project
+	$(DBT_CMD) test --project-dir dbt_project
 
 docs:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) docs generate --project-dir dbt_project
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(DBT) docs serve --project-dir dbt_project
+	$(DBT_CMD) docs generate --project-dir dbt_project
+	$(DBT_CMD) docs serve --project-dir dbt_project
+
+fix:
+	DBT_PROFILES_DIR=$(PROFILES_DIR) DUCKDB_PATH=$(CURDIR)/data/financial_dw.duckdb \
+	$(VENV)/Scripts/sqlfluff fix dbt_project/models dbt_project/snapshots \
+	--dialect duckdb --templater dbt
 
 # ── Pipeline completo ─────────────────────────────────────────────────────────
 .PHONY: all
 all: ingest seed build
-
-.PHONY: fix
-fix:
-	DBT_PROFILES_DIR=$(PROFILES_DIR) $(VENV)/Scripts/sqlfluff fix dbt_project/models dbt_project/snapshots --dialect duckdb --templater dbt
