@@ -23,7 +23,7 @@ with market_returns as (
 
     {% if is_incremental() %}
         where trade_date >= (
-            select max(mr.trade_date) - interval '7 days'
+            select max(trade_date) - interval '7 days'  -- noqa: RF02
             from {{ this }}
         )
     {% endif %}
