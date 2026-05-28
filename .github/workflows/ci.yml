@@ -36,18 +36,21 @@ jobs:
         working-directory: dbt_project
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+          DBT_TARGET: ci
         run: dbt deps
 
       - name: dbt compile (syntax check)
         working-directory: dbt_project
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+          DBT_TARGET: ci
         run: dbt compile
 
       - name: dbt build (modified + downstream)
         working-directory: dbt_project
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+          DBT_TARGET: ci
         run: |
           dbt build \
             --select state:modified+ \
@@ -83,11 +86,13 @@ jobs:
         working-directory: dbt_project
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+          DBT_TARGET: ci
         run: dbt deps
 
       - name: Lint SQL
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+          DBT_TARGET: ci
         run: |
           sqlfluff lint dbt_project/models/ \
             --dialect duckdb \
