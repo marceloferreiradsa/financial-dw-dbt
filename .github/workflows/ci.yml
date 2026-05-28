@@ -90,8 +90,8 @@ jobs:
 
       - name: Create profiles.yml for lint
         run: |
-          mkdir -p ~/.dbt
-          cat > ~/.dbt/profiles.yml << 'PROFILES'
+          mkdir -p ${{ github.workspace }}/.dbt
+          cat > ${{ github.workspace }}/.dbt/profiles.yml << 'PROFILES'
           financial_dw:
             target: ci
             outputs:
@@ -104,9 +104,11 @@ jobs:
 
       - name: dbt deps (for templater)
         working-directory: dbt_project
-        run: dbt deps --profiles-dir ~/.dbt
+        run: dbt deps --profiles-dir ${{ github.workspace }}/.dbt
 
       - name: Lint SQL
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
         run: |
           sqlfluff lint dbt_project/models/ \
             --dialect duckdb \
