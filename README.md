@@ -5,7 +5,6 @@
 [![dbt CI](https://github.com/marceloferreiradsa/financial-dw-dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/marceloferreiradsa/financial-dw-dbt/actions)
 [![dbt Docs](https://img.shields.io/badge/dbt%20docs-GitHub%20Pages-blue)](https://marceloferreiradsa.github.io/financial-dw-dbt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Contato: marcelo.ferreira.dsa@gmail.com]]
 
 ---
 
@@ -17,7 +16,7 @@
 |---|---|
 | Arquitetura 3 camadas (staging → intermediate → marts) | `dbt_project/models/` |
 | `sources.yml` com freshness checks | `models/staging/sources.yml` |
-| Incremental model com `merge` strategy | `marts/market/mart_stock_performance.sql` |
+| Incremental model com `delete+insert` strategy | `marts/market/mart_stock_performance.sql` |
 | Snapshot SCD Type 2 (`strategy: check`) | `snapshots/snap_ticker_metadata.sql` |
 | Testes com `dbt_utils` + `dbt_expectations` | `schema.yml` em cada camada |
 | Macro Jinja parametrizada | `macros/calculate_rolling_metrics.sql` |
@@ -90,7 +89,7 @@ source .dbt-env/Scripts/activate   # Windows/Git Bash
 
 ```bash
 cp .env.example .env
-# Os valores padrao ja funcionam — nenhuma edicao necessaria
+# Edite o .env se quiser alterar datas ou tickers — os valores padrao ja funcionam
 ```
 
 ### 4. Rode a ingestao de dados
@@ -141,11 +140,23 @@ make all
 
 ## GitHub Pages (dbt Docs automatico)
 
-Ative o GitHub Pages no repositorio:
+Ative o GitHub Pages no repositorio antes do primeiro deploy:
 `Settings → Pages → Source: GitHub Actions`
 
 Apos cada push em `main`, os docs sao publicados automaticamente em:
 `https://marceloferreiradsa.github.io/financial-dw-dbt`
+
+---
+
+## Nota sobre profiles.yml
+
+O `dbt_project/profiles.yml` esta versionado intencionalmente. Ao contrario da
+convencao padrao, este arquivo nao contem credenciais — todos os valores sensiveis
+sao lidos via `env_var()`, e o target `ci` usa banco em memoria (`:memory:`).
+
+Em projetos com credenciais reais (Snowflake, BigQuery, Redshift), o `profiles.yml`
+ficaria no `.gitignore` e seria gerado no CI via GitHub Secrets ou um gerenciador
+de secrets dedicado (HashiCorp Vault, AWS Secrets Manager).
 
 ---
 
@@ -158,7 +169,7 @@ financial-dw-dbt/
 ├── dbt_project/
 │   ├── models/
 │   │   ├── staging/        sources.yml, schema.yml, stg_*.sql
-│   │   ├── intermediate/   int_*.sql
+│   │   ├── intermediate/   schema.yml, int_*.sql
 │   │   └── marts/          finance/, market/ (incremental)
 │   ├── snapshots/          snap_ticker_metadata.sql
 │   ├── macros/             generate_schema_name.sql, calculate_rolling_metrics.sql
