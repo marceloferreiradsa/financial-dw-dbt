@@ -1,0 +1,33 @@
+# ATENÇÃO: Este arquivo está no .gitignore — não será versionado.
+# Copie para ~/.dbt/profiles.yml OU defina a variável:
+#   set DBT_PROFILES_DIR=%CD%\dbt_project   (Windows)
+#   export DBT_PROFILES_DIR=./dbt_project    (Linux/Mac)
+
+financial_dw:
+  target: dev
+  outputs:
+
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../data/financial_dw.duckdb') }}"
+      threads: 4
+      extensions:
+        - httpfs
+        - json
+
+    ci:
+      # CI usa banco em memória — sem necessidade de arquivo persistido
+      type: duckdb
+      path: ":memory:"
+      threads: 2
+      extensions:
+        - httpfs
+        - json
+
+    prod:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH') }}"
+      threads: 8
+      extensions:
+        - httpfs
+        - json
