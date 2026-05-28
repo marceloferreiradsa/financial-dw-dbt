@@ -32,37 +32,28 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Create profiles.yml for CI
-        run: |
-          mkdir -p ~/.dbt
-          cat > ~/.dbt/profiles.yml << 'PROFILES'
-          financial_dw:
-            target: ci
-            outputs:
-              ci:
-                type: duckdb
-                path: ":memory:"
-                threads: 2
-                extensions: [httpfs, json]
-          PROFILES
-
       - name: dbt deps
         working-directory: dbt_project
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
         run: dbt deps
 
       - name: dbt compile (syntax check)
         working-directory: dbt_project
-        run: dbt compile --profiles-dir ~/.dbt
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+        run: dbt compile
 
       - name: dbt build (modified + downstream)
         working-directory: dbt_project
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
         run: |
           dbt build \
             --select state:modified+ \
-            --profiles-dir ~/.dbt \
             --defer \
             --state ./target \
-          || dbt build --profiles-dir ~/.dbt
+          || dbt build
 
       - name: Upload dbt artifacts
         uses: actions/upload-artifact@v4
@@ -88,27 +79,15 @@ jobs:
       - name: Install sqlfluff
         run: pip install sqlfluff==3.3.1 sqlfluff-templater-dbt==3.3.1 dbt-core==1.9.4 dbt-duckdb==1.9.2
 
-      - name: Create profiles.yml for lint
-        run: |
-          mkdir -p ${{ github.workspace }}/.dbt
-          cat > ${{ github.workspace }}/.dbt/profiles.yml << 'PROFILES'
-          financial_dw:
-            target: ci
-            outputs:
-              ci:
-                type: duckdb
-                path: ":memory:"
-                threads: 2
-                extensions: [httpfs, json]
-          PROFILES
-
       - name: dbt deps (for templater)
         working-directory: dbt_project
-        run: dbt deps --profiles-dir ${{ github.workspace }}/.dbt
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+        run: dbt deps
 
       - name: Lint SQL
         env:
-          DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
         run: |
           sqlfluff lint dbt_project/models/ \
             --dialect duckdb \
