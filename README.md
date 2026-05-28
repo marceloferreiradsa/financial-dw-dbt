@@ -5,6 +5,7 @@
 [![dbt CI](https://github.com/marceloferreiradsa/financial-dw-dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/marceloferreiradsa/financial-dw-dbt/actions)
 [![dbt Docs](https://img.shields.io/badge/dbt%20docs-GitHub%20Pages-blue)](https://marceloferreiradsa.github.io/financial-dw-dbt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Contato: marcelo.ferreira.dsa@gmail.com]]
 
 ---
 
