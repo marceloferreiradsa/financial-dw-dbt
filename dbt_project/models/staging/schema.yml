@@ -2,38 +2,95 @@ version: 2
 
 models:
   - name: stg_bacen_series
-    description: "Series macroeconomicas BACEN normalizadas. Uma linha por (series_code, reference_date)."
+    description: >
+      Series macroeconomicas do Banco Central (API SGS) normalizadas.
+      Responsavel por cast de tipos, renomeacao para snake_case e filtro
+      defensivo de nulos e valores invalidos. Sem logica de negocio.
+      Uma linha por (series_code, reference_date).
     columns:
       - name: series_code
+        description: "Codigo numerico da serie no sistema SGS do BACEN (ex: 11 = Selic, 433 = IPCA)."
+        tests: [not_null]
+      - name: series_name
+        description: "Nome normalizado da serie (selic_rate, ipca_inflation, usd_brl_rate, igpm_inflation, cdi_rate, real_interest_rate)."
+        tests: [not_null]
+      - name: frequency
+        description: "Frequencia de observacao da serie: daily para taxas diarias, monthly para indices mensais."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [daily, monthly]
+      - name: unit
+        description: "Unidade de medida do valor (pct_per_year, pct_change, brl_per_usd)."
         tests: [not_null]
       - name: reference_date
+        description: "Data de referencia da observacao. Para series mensais, representa o primeiro dia do mes."
         tests: [not_null]
       - name: series_value
+        description: "Valor numerico da serie. Taxas em % a.a. ou variacao %; cambio em BRL por USD."
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: -50
               max_value: 10000
-      - name: frequency
-        tests:
-          - accepted_values:
-              values: [daily, monthly]
+      - name: ingested_at
+        description: "Timestamp UTC de quando o registro foi gravado no DuckDB pelo script de ingestao."
+        tests: [not_null]
 
   - name: stg_market_prices
-    description: "Cotacoes diarias OHLCV com retorno logaritmico. Ajustada por dividendos/splits via adj_close."
+    description: >
+      Cotacoes historicas diarias de acoes B3 via Brapi (brapi.dev).
+      Inclui OHLCV, preco ajustado, retorno logaritmico diario e flag de
+      eventos corporativos. Sem logica de negocio alem do calculo do
+      log_return, considerado transformacao matematica pura da serie de precos.
+      Uma linha por (ticker, trade_date).
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: [ticker, trade_date]
     columns:
       - name: ticker
+        description: "Codigo do ativo na B3 (ex: PETR4, VALE3). Sem sufixo .SA."
         tests: [not_null]
+      - name: company_name
+        description: "Nome completo da empresa emissora do ativo."
+      - name: sector
+        description: "Setor economico da empresa (Energy, Materials, Financials, Consumer)."
+      - name: market_index
+        description: "Indice de referencia do ativo. Todos os tickers desta versao pertencem ao IBOVESPA."
       - name: trade_date
+        description: "Data do pregao em que o ativo foi negociado."
         tests: [not_null]
+      - name: price_open
+        description: "Preco de abertura do pregao em BRL."
+      - name: price_high
+        description: "Preco maximo atingido durante o pregao em BRL."
+      - name: price_low
+        description: "Preco minimo atingido durante o pregao em BRL."
       - name: price_close
+        description: "Preco de fechamento nominal do pregao em BRL."
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0.01
               max_value: 100000
       - name: price_adj_close
+        description: >
+          Preco de fechamento ajustado por dividendos e splits em BRL.
+          Usar este campo para calculos de retorno real; price_close para analises de preco nominal.
+        tests: [not_null]
+      - name: volume
+        description: "Volume financeiro negociado no pregao em quantidade de acoes."
+      - name: dividends
+        description: "Valor de dividendos distribuidos na data. Preenchido com 0 pois a Brapi nao fornece este dado no tier gratuito."
+      - name: stock_splits
+        description: "Fator de desdobramento de acoes na data. Preenchido com 0 pois a Brapi nao fornece este dado no tier gratuito."
+      - name: log_return_daily
+        description: >
+          Retorno logaritmico diario: ln(price_adj_close_t / price_adj_close_{t-1}).
+          Numericamente mais estavel que retorno aritmetico para series longas.
+          NULL no primeiro dia de cada ticker (sem dia anterior disponivel).
+      - name: has_corporate_event
+        description: "True se houve dividendo ou split na data. Util para filtrar distorcoes em analises de retorno."
+      - name: ingested_at
+        description: "Timestamp UTC de quando o registro foi gravado no DuckDB pelo script de ingestao."
         tests: [not_null]

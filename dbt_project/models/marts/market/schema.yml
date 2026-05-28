@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: mart_stock_performance
+    description: >
+      Mart principal de performance de acoes — ponto de consumo para dashboards e BI.
+      Materializado como incremental com estrategia merge: na primeira execucao cria
+      a tabela completa; nas seguintes processa apenas os ultimos 7 dias para capturar
+      ajustes retroativos de dividendos e splits.
+      Combina metricas de retorno e risco de int_market_returns com contexto
+      macroeconomico de int_macro_pivoted. Uma linha por (ticker, trade_date).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [ticker, trade_date]
+    columns:
+      - name: ticker
+        description: "Codigo do ativo na B3. Chave primaria composta com trade_date."
+        tests: [not_null]
+      - name: trade_date
+        description: "Data do pregao. Chave primaria composta com ticker."
+        tests: [not_null]
+      - name: company_name
+        description: "Nome completo da empresa."
+      - name: sector
+        description: "Setor economico da empresa."
+      - name: market_index
+        description: "Indice de referencia do ativo (IBOVESPA)."
+      - name: price_open
+        description: "Preco de abertura do pregao em BRL."
+      - name: price_high
+        description: "Preco maximo do pregao em BRL."
+      - name: price_low
+        description: "Preco minimo do pregao em BRL."
+      - name: price_close
+        description: "Preco de fechamento nominal em BRL."
+      - name: price_adj_close
+        description: "Preco de fechamento ajustado por proventos em BRL."
+      - name: volume
+        description: "Volume negociado em quantidade de acoes."
+      - name: avg_volume_21d
+        description: "Media movel de volume nos ultimos 21 dias. Referencia para detectar anomalias de liquidez."
+      - name: has_corporate_event
+        description: "True se houve dividendo ou split na data."
+      - name: dividends
+        description: "Valor de dividendos distribuidos na data."
+      - name: log_return_daily
+        description: "Retorno logaritmico diario: ln(price_adj_close_t / price_adj_close_{t-1})."
+      - name: cumulative_return_index
+        description: "Indice de retorno acumulado desde o inicio da serie. Base 1.0 = preco inicial."
+      - name: volatility_21d_annualized
+        description: "Volatilidade realizada anualizada em janela de 21 dias uteis."
+      - name: volatility_63d_annualized
+        description: "Volatilidade realizada anualizada em janela de 63 dias uteis."
+      - name: drawdown_from_peak
+        description: "Queda percentual em relacao ao pico historico acumulado. 0 = nova maxima; -0.30 = queda de 30%."
+      - name: running_peak
+        description: "Maximo historico acumulado do price_adj_close desde o inicio da serie."
+      - name: selic_rate
+        description: "Taxa Selic do dia em % a.a. Contexto macroeconomico para analise de premio de risco."
+      - name: usd_brl_rate
+        description: "Taxa de cambio USD/BRL do dia. Contexto para empresas com exposicao cambial."
+      - name: cdi_rate
+        description: "Taxa CDI do dia em % a.a. Benchmark para comparacao com renda fixa."
+      - name: ipca_monthly_pct
+        description: "Variacao percentual mensal do IPCA. NULL em dias fora do primeiro dia util do mes."
+      - name: risk_premium_vs_cdi
+        description: >
+          Premio de risco simplificado: volatility_21d_annualized - (cdi_rate / 100).
+          Indica o risco adicional assumido em relacao ao CDI.
+          Valores positivos indicam ativo mais volatil que o benchmark de renda fixa.
+      - name: dbt_updated_at
+        description: "Timestamp da ultima execucao do dbt que gerou ou atualizou este registro."
+        tests: [not_null]

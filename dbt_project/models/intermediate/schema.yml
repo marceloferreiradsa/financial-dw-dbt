@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: int_macro_pivoted
+    description: >
+      Pivota as series BACEN do formato long (uma linha por serie/data) para wide
+      (uma linha por data com cada indicador como coluna).
+      Series mensais (IPCA, IGP-M, juro real) terao NULL nos dias sem observacao
+      — comportamento intencional. Camadas downstream aplicam forward fill quando necessario.
+      Filtrado para dias uteis BACEN (is_bacen_business_day = true).
+    columns:
+      - name: macro_date
+        description: "Data de referencia do indicador. Corresponde a dias uteis do BACEN (dias com publicacao da Selic)."
+        tests: [not_null, unique]
+      - name: selic_rate
+        description: "Taxa Selic diaria em % a.a. (serie 11 do SGS). NULL em feriados e fins de semana."
+      - name: usd_brl_rate
+        description: "Taxa de cambio USD/BRL (venda) do dia (serie 1 do SGS)."
+      - name: cdi_rate
+        description: "Taxa CDI diaria em % a.a. (serie 4189 do SGS). Referencia para renda fixa."
+      - name: ipca_monthly_pct
+        description: >
+          Variacao percentual mensal do IPCA (serie 433 do SGS).
+          Disponivel apenas no primeiro dia util de cada mes; NULL nos demais dias.
+      - name: igpm_monthly_pct
+        description: >
+          Variacao percentual mensal do IGP-M (serie 189 do SGS).
+          Disponivel apenas no primeiro dia util de cada mes; NULL nos demais dias.
+      - name: real_interest_rate
+        description: >
+          Juro real ex-ante mensal em % a.a. (serie 7811 do SGS).
+          Disponivel apenas no primeiro dia util de cada mes; NULL nos demais dias.
+      - name: is_bacen_business_day
+        description: "True quando existe publicacao da Selic para a data, indicando dia util no calendario BACEN."
+        tests: [not_null]
+
+  - name: int_market_returns
+    description: >
+      Enriquece as cotacoes de staging com metricas de retorno e risco calculadas
+      via window functions. Janelas de calculo: 21d (~1 mes), 63d (~1 trimestre).
+      Exclui o primeiro registro de cada ticker (log_return_daily nulo, sem dia anterior).
+      Ponto de consumo para o mart_stock_performance.
+    columns:
+      - name: ticker
+        description: "Codigo do ativo na B3."
+        tests: [not_null]
+      - name: trade_date
+        description: "Data do pregao."
+        tests: [not_null]
+      - name: company_name
+        description: "Nome completo da empresa."
+      - name: sector
+        description: "Setor economico da empresa."
+      - name: market_index
+        description: "Indice de referencia (IBOVESPA)."
+      - name: price_open
+        description: "Preco de abertura em BRL."
+      - name: price_high
+        description: "Preco maximo do pregao em BRL."
+      - name: price_low
+        description: "Preco minimo do pregao em BRL."
+      - name: price_close
+        description: "Preco de fechamento nominal em BRL."
+      - name: price_adj_close
+        description: "Preco de fechamento ajustado por proventos em BRL."
+      - name: volume
+        description: "Volume negociado em quantidade de acoes."
+      - name: dividends
+        description: "Dividendos distribuidos na data."
+      - name: has_corporate_event
+        description: "True se houve dividendo ou split na data."
+      - name: log_return_daily
+        description: "Retorno logaritmico diario: ln(adj_close_t / adj_close_{t-1})."
+        tests: [not_null]
+      - name: cumulative_return_index
+        description: >
+          Indice de retorno acumulado desde o inicio da serie: exp(sum dos log_returns).
+          Base 1.0 = preco inicial. Valor 1.5 = retorno acumulado de 50%.
+      - name: volatility_21d_annualized
+        description: >
+          Volatilidade realizada anualizada em janela de 21 dias uteis (~1 mes).
+          Calculada como stddev(log_return) * sqrt(252).
+      - name: volatility_63d_annualized
+        description: >
+          Volatilidade realizada anualizada em janela de 63 dias uteis (~1 trimestre).
+          Janela mais longa suaviza picos de volatilidade pontual.
+      - name: running_peak
+        description: "Maximo historico acumulado do price_adj_close desde o inicio da serie."
+      - name: drawdown_from_peak
+        description: >
+          Queda percentual em relacao ao pico historico: (price_adj_close / running_peak) - 1.
+          Valor 0 indica nova maxima; -0.30 indica queda de 30% desde o pico.
+      - name: avg_volume_21d
+        description: "Media movel de volume negociado nos ultimos 21 dias. Util para detectar anomalias de liquidez."

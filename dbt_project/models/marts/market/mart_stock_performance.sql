@@ -2,7 +2,7 @@
     config(
         materialized='incremental',
         unique_key=['ticker', 'trade_date'],
-        incremental_strategy='merge',
+        incremental_strategy='delete+insert',
         on_schema_change='append_new_columns',
         tags=['marts', 'market', 'incremental']
     )
@@ -23,7 +23,7 @@ with market_returns as (
 
     {% if is_incremental() %}
         where trade_date >= (
-            select max(trade_date) - interval '7 days'
+            select max(mr.trade_date) - interval '7 days'
             from {{ this }}
         )
     {% endif %}
