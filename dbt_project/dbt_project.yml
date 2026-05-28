@@ -1,0 +1,70 @@
+name: financial_dw
+version: "1.0.0"
+config-version: 2
+
+profile: financial_dw
+
+model-paths:    ["models"]
+analysis-paths: ["analyses"]
+test-paths:     ["tests"]
+seed-paths:     ["seeds"]
+macro-paths:    ["macros"]
+snapshot-paths: ["snapshots"]
+docs-paths:     ["docs"]
+
+target-path:  "target"
+clean-targets: ["target", "dbt_packages"]
+
+# ── Materialização e schema por camada ──────────────────────────────────────
+# Separação física garante que staging nunca seja consultado diretamente
+# por ferramentas de BI — apenas os marts são expostos ao consumidor final.
+models:
+  financial_dw:
+
+    staging:
+      +materialized: view
+      +schema: staging
+      +tags: ["staging"]
+
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+      +tags: ["intermediate"]
+
+    marts:
+      +materialized: table
+      +schema: marts
+      +tags: ["marts"]
+
+      finance:
+        +tags: ["marts", "finance"]
+
+      market:
+        +tags: ["marts", "market"]
+
+seeds:
+  financial_dw:
+    +schema: seeds
+    dim_calendar:
+      +column_types:
+        date_id: integer
+        full_date: date
+        is_business_day: boolean
+        is_weekend: boolean
+
+snapshots:
+  financial_dw:
+    +target_schema: snapshots
+    +strategy: check
+    +unique_key: ticker
+
+# ── Variáveis globais do projeto ─────────────────────────────────────────────
+vars:
+  start_date: "2020-01-01"
+  end_date: "{{ run_started_at.strftime('%Y-%m-%d') }}"
+  selic_series_code: "11"
+  ipca_series_code: "433"
+  usd_brl_series_code: "1"
+  igpm_series_code: "189"
+  cdi_series_code: "4189"
+  tickers: ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "WEGE3.SA", "MGLU3.SA"]

@@ -1,0 +1,94 @@
+name: dbt CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'dbt_project/**'
+      - 'ingestion/**'
+      - 'requirements.txt'
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dbt-ci:
+    name: dbt Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create profiles.yml for CI
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'PROFILES'
+          financial_dw:
+            target: ci
+            outputs:
+              ci:
+                type: duckdb
+                path: ":memory:"
+                threads: 2
+                extensions: [httpfs, json]
+          PROFILES
+
+      - name: dbt deps
+        working-directory: dbt_project
+        run: dbt deps
+
+      - name: dbt compile (syntax check)
+        working-directory: dbt_project
+        run: dbt compile --profiles-dir ~/.dbt
+
+      - name: dbt build (modified + downstream)
+        working-directory: dbt_project
+        run: |
+          dbt build \
+            --select state:modified+ \
+            --profiles-dir ~/.dbt \
+            --defer \
+            --state ./target \
+          || dbt build --profiles-dir ~/.dbt
+
+      - name: Upload dbt artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-artifacts-${{ github.sha }}
+          path: |
+            dbt_project/target/manifest.json
+            dbt_project/target/run_results.json
+          retention-days: 30
+
+  sqlfluff-lint:
+    name: SQL Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install sqlfluff
+        run: pip install sqlfluff==3.3.1 sqlfluff-templater-dbt==3.3.1 dbt-duckdb==1.9.2
+      - name: Lint SQL
+        run: |
+          sqlfluff lint dbt_project/models/ \
+            --dialect duckdb \
+            --format github-annotation \
+            --annotation-level warning \
+            --noqa-require-code

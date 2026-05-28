@@ -1,0 +1,14 @@
+# dbt Core + adapter DuckDB
+dbt-core==1.9.4
+dbt-duckdb==1.9.2
+
+# Ingestão de dados
+requests==2.32.3
+yfinance==0.2.54
+pandas==2.2.3
+python-dotenv==1.0.1
+
+# Qualidade de código
+sqlfluff==3.3.1
+sqlfluff-templater-dbt==3.3.1
+pre-commit==3.8.0

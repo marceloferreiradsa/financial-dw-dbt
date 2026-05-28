@@ -1,0 +1,18 @@
+[sqlfluff]
+templater = dbt
+dialect = duckdb
+max_line_length = 120
+
+[sqlfluff:templater:dbt]
+project_dir = ./dbt_project
+profiles_dir = ./dbt_project
+
+[sqlfluff:rules:layout.indent]
+indent_unit = space
+tab_space_size = 4
+
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit

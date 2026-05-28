@@ -1,0 +1,50 @@
+version: 2
+
+sources:
+  - name: raw_bacen
+    description: "Series temporais macroeconomicas via API SGS/BACEN. Script: ingestion/ingest_bacen.py"
+    schema: raw
+    loaded_at_field: ingested_at
+    freshness:
+      warn_after:  {count: 3, period: day}
+      error_after: {count: 7, period: day}
+    tables:
+      - name: bacen_series
+        description: "Todas as series macro em formato long (uma linha por serie/data)"
+        columns:
+          - name: series_code
+            tests: [not_null]
+          - name: series_name
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [selic_rate, ipca_inflation, usd_brl_rate,
+                           igpm_inflation, cdi_rate, real_interest_rate]
+          - name: date
+            tests: [not_null]
+          - name: value
+            tests: [not_null]
+          - name: ingested_at
+            tests: [not_null]
+
+  - name: raw_market
+    description: "Cotacoes OHLCV B3 via yfinance. Script: ingestion/ingest_market.py"
+    schema: raw
+    loaded_at_field: ingested_at
+    freshness:
+      warn_after:  {count: 3, period: day}
+      error_after: {count: 7, period: day}
+    tables:
+      - name: market_prices
+        description: "Precos diarios OHLCV + dividendos + splits por ticker B3"
+        columns:
+          - name: ticker
+            tests: [not_null]
+          - name: date
+            tests: [not_null]
+          - name: close
+            tests:
+              - not_null
+              - dbt_expectations.expect_column_values_to_be_between:
+                  min_value: 0.01
+                  max_value: 100000

@@ -1,0 +1,31 @@
+# Python
+.venv/
+.dbt-env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.log
+
+# Dados locais e banco DuckDB (nunca versionar dados)
+data/
+*.duckdb
+*.duckdb.wal
+
+# dbt artifacts (gerados em runtime)
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# Credenciais — NUNCA versionar
+.env
+dbt_project/profiles.yml
+
+# VSCode user settings (manter apenas shared)
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+structure.txt

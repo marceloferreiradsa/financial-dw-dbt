@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "dbt-labs.dbt-power-user",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "mechatroner.rainbow-csv",
+    "redhat.vscode-yaml",
+    "streetsidesoftware.code-spell-checker-portuguese-brazilian"
+  ]
+}
