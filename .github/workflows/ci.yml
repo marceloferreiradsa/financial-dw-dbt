@@ -79,16 +79,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+
       - name: Install sqlfluff
-        run: pip install sqlfluff==3.3.1 sqlfluff-templater-dbt==3.3.1 dbt-duckdb==1.9.2
+        run: pip install sqlfluff==3.3.1 sqlfluff-templater-dbt==3.3.1 dbt-core==1.9.4 dbt-duckdb==1.9.2
+
+      - name: Create profiles.yml for lint
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'PROFILES'
+          financial_dw:
+            target: ci
+            outputs:
+              ci:
+                type: duckdb
+                path: ":memory:"
+                threads: 2
+                extensions: [httpfs, json]
+          PROFILES
+
+      - name: dbt deps (for templater)
+        working-directory: dbt_project
+        run: dbt deps --profiles-dir ~/.dbt
+
       - name: Lint SQL
         run: |
           sqlfluff lint dbt_project/models/ \
             --dialect duckdb \
+            --templater dbt \
             --format github-annotation \
-            --annotation-level warning \
-            --noqa-require-code
+            --annotation-level warning
