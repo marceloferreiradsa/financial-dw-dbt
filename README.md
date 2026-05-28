@@ -1,18 +1,20 @@
 # Financial Data Warehouse — dbt + DuckDB
 
-> **Portfolio Project 1** | dbt Core intermediário/avançado com dados reais da API BACEN e B3
+> **Portfolio Project** | dbt Core com dados reais da API BACEN e B3, orquestrado com Apache Airflow
 
-[![dbt CI](https://github.com/SEU_USUARIO/financial-dw-dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/SEU_USUARIO/financial-dw-dbt/actions)
-[![dbt Docs](https://img.shields.io/badge/dbt%20docs-GitHub%20Pages-blue)](https://SEU_USUARIO.github.io/financial-dw-dbt)
+[![dbt CI](https://github.com/marceloferreiradsa/financial-dw-dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/marceloferreiradsa/financial-dw-dbt/actions)
+[![dbt Docs](https://img.shields.io/badge/dbt%20docs-GitHub%20Pages-blue)](https://marceloferreiradsa.github.io/financial-dw-dbt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## Features dbt demonstradas
+## O que este projeto demonstra
+
+### dbt
 
 | Feature | Arquivo |
 |---|---|
-| Arquitetura 3 camadas (staging → intermediate → marts) | `models/` |
+| Arquitetura 3 camadas (staging → intermediate → marts) | `dbt_project/models/` |
 | `sources.yml` com freshness checks | `models/staging/sources.yml` |
 | Incremental model com `merge` strategy | `marts/market/mart_stock_performance.sql` |
 | Snapshot SCD Type 2 (`strategy: check`) | `snapshots/snap_ticker_metadata.sql` |
@@ -23,6 +25,16 @@
 | CI com `state:modified+` | `.github/workflows/ci.yml` |
 | dbt Docs no GitHub Pages | `.github/workflows/docs.yml` |
 | SQL lint (sqlfluff) no pre-commit e CI | `.sqlfluff`, `.pre-commit-config.yaml` |
+
+### Engenharia
+
+| Feature | Arquivo |
+|---|---|
+| Ingestao de dados macroeconomicos via API BACEN | `ingestion/ingest_bacen.py` |
+| Ingestao de cotacoes B3 via yfinance | `ingestion/ingest_market.py` |
+| Orquestracao com Apache Airflow + Docker Compose | `orchestration/` |
+| Pipeline automatizado via Makefile | `Makefile` |
+| pre-commit hooks (trailing whitespace, YAML, sqlfluff) | `.pre-commit-config.yaml` |
 
 ---
 
@@ -47,60 +59,82 @@ yfinance/B3    →  raw.market_prices
 
 ---
 
-## Setup (Windows)
+## Setup
 
-### Prerequisitos
-- Python 3.11 ou 3.12
+### Pre-requisitos
+
+- Python 3.11+
 - Git
-- VSCode + extensao [dbt Power User](https://marketplace.visualstudio.com/items?itemName=innoverio.vscode-dbt-power-user)
+- `make`
+  - **WSL / Linux / Mac:** ja disponivel nativamente
+  - **Windows (Git Bash):** `winget install GnuWin32.Make` e adicionar ao PATH:
+    `echo 'export PATH=$PATH:"/c/Program Files (x86)/GnuWin32/bin"' >> ~/.bashrc`
 
-### 1. Clone e configure
+### 1. Clone o repositorio
 
-```bat
-git clone https://github.com/SEU_USUARIO/financial-dw-dbt.git
+```bash
+git clone https://github.com/marceloferreiradsa/financial-dw-dbt.git
 cd financial-dw-dbt
-setup_venv.bat
 ```
 
-### 2. Configure variaveis de ambiente
+### 2. Configure o ambiente
 
-```bat
-copy .env.example .env
-:: Edite o .env com DUCKDB_PATH, BACEN_START_DATE, TICKERS
+```bash
+make setup
+source .dbt-env/Scripts/activate   # Windows/Git Bash
+# source .dbt-env/bin/activate      # WSL/Linux/Mac
 ```
 
-### 3. Configure profiles.yml
+### 3. Configure as variaveis de ambiente
 
-```bat
-copy dbt_project\profiles.yml %USERPROFILE%\.dbt\profiles.yml
-:: OU: set DBT_PROFILES_DIR=%CD%\dbt_project
+```bash
+cp .env.example .env
+# Edite o .env se quiser alterar datas ou tickers — os valores padrao ja funcionam
 ```
 
 ### 4. Rode a ingestao de dados
 
-```bat
-.venv\Scripts\activate.bat
-python ingestion/generate_calendar.py
-python ingestion/ingest_bacen.py
-python ingestion/ingest_market.py
+```bash
+make ingest
 ```
+
+Isso busca series macroeconomicas do BACEN (Selic, IPCA, CDI, USD/BRL, IGP-M, juro real)
+e cotacoes historicas de 6 tickers B3 via Yahoo Finance.
 
 ### 5. Execute o pipeline dbt
 
-```bat
-cd dbt_project
-dbt deps
-dbt seed
-dbt build
+```bash
+make build
 ```
 
 ### 6. Visualize a documentacao
 
-```bat
-dbt docs generate
-dbt docs serve
-:: Acesse: http://localhost:8080
+```bash
+make docs
+# Acesse: http://localhost:8080
 ```
+
+### Pipeline completo (ingestao + dbt)
+
+```bash
+make all
+```
+
+---
+
+## Comandos disponiveis
+
+| Comando | O que faz |
+|---|---|
+| `make setup` | Cria o venv e instala todas as dependencias |
+| `make ingest` | Roda os tres scripts de ingestao |
+| `make deps` | Instala os pacotes dbt (`packages.yml`) |
+| `make seed` | Carrega o seed `dim_calendar` |
+| `make build` | Roda `dbt build` (seed + models + tests) |
+| `make test` | Roda apenas os testes dbt |
+| `make docs` | Gera e serve a documentacao dbt |
+| `make fix` | Auto-corrige violacoes de estilo SQL via sqlfluff |
+| `make all` | Ingestao + seed + build completo |
 
 ---
 
@@ -109,7 +143,8 @@ dbt docs serve
 Ative o GitHub Pages no repositorio:
 `Settings → Pages → Source: GitHub Actions`
 
-Apos cada push em `main`, os docs sao publicados automaticamente.
+Apos cada push em `main`, os docs sao publicados automaticamente em:
+`https://marceloferreiradsa.github.io/financial-dw-dbt`
 
 ---
 
@@ -117,26 +152,33 @@ Apos cada push em `main`, os docs sao publicados automaticamente.
 
 ```
 financial-dw-dbt/
-├── .github/workflows/    ci.yml, docs.yml
-├── .vscode/              extensions.json
+├── .github/workflows/      ci.yml, docs.yml
+├── .vscode/                extensions.json
 ├── dbt_project/
 │   ├── models/
-│   │   ├── staging/      sources.yml, schema.yml, stg_*.sql
-│   │   ├── intermediate/ int_*.sql
-│   │   └── marts/        finance/, market/ (incremental)
-│   ├── snapshots/        snap_ticker_metadata.sql
-│   ├── macros/           generate_schema_name.sql, calculate_rolling_metrics.sql
-│   ├── seeds/            dim_calendar.csv
+│   │   ├── staging/        sources.yml, schema.yml, stg_*.sql
+│   │   ├── intermediate/   int_*.sql
+│   │   └── marts/          finance/, market/ (incremental)
+│   ├── snapshots/          snap_ticker_metadata.sql
+│   ├── macros/             generate_schema_name.sql, calculate_rolling_metrics.sql
+│   ├── seeds/              dim_calendar.csv
 │   ├── dbt_project.yml
 │   ├── packages.yml
-│   └── profiles.yml      (nao versionado — copiar para ~/.dbt/)
-├── ingestion/            ingest_bacen.py, ingest_market.py, generate_calendar.py
+│   └── profiles.yml        (nao versionado — gerenciado via DBT_PROFILES_DIR)
+├── ingestion/              ingest_bacen.py, ingest_market.py, generate_calendar.py
+├── orchestration/
+│   ├── dags/               financial_pipeline.py
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── requirements-airflow.txt
+│   └── .env.airflow.example
 ├── .env.example
+├── .gitattributes
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .sqlfluff
+├── Makefile
 ├── requirements.txt
-├── setup_venv.bat
 ├── CHANGELOG.md
 └── README.md
 ```
@@ -147,8 +189,8 @@ financial-dw-dbt/
 
 | Pacote | Uso |
 |---|---|
-| `dbt-labs/dbt_utils ^1.3` | `surrogate_key`, `unique_combination_of_columns`, date_spine |
-| `calogica/dbt_expectations ^0.10` | `expect_column_values_to_be_between` |
+| `dbt-labs/dbt_utils ^1.3` | `unique_combination_of_columns`, date_spine |
+| `metaplane/dbt_expectations ^0.10` | `expect_column_values_to_be_between` |
 | `dbt-labs/audit_helper ^0.12` | Validacao de refactoring |
 | `dbt-labs/codegen ^0.12` | Geracao automatica de YAML |
 
