@@ -24,7 +24,7 @@ ingest:
 	$(PYTHON) ingestion/ingest_market.py
 
 # ── dbt ───────────────────────────────────────────────────────────────────────
-.PHONY: deps seed build test docs fix
+.PHONY: deps seed build test docs fix rebuild
 deps:
 	$(DBT_CMD) deps --project-dir dbt_project
 
@@ -45,6 +45,12 @@ fix:
 	DBT_PROFILES_DIR=$(PROFILES_DIR) DUCKDB_PATH=$(CURDIR)/data/financial_dw.duckdb \
 	$(VENV)/Scripts/sqlfluff fix dbt_project/models dbt_project/snapshots \
 	--dialect duckdb --templater dbt
+
+rebuild:
+	$(DBT_CMD) run \
+	  --select mart_stock_performance \
+	  --full-refresh \
+	  --project-dir dbt_project
 
 # ── Pipeline completo ─────────────────────────────────────────────────────────
 .PHONY: all
