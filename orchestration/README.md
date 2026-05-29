@@ -1,6 +1,6 @@
 # Orchestration — Airflow + Cosmos
 
-Orquestração do pipeline financeiro com Apache Airflow 2.9 e astronomer-cosmos.
+Orquestracao do pipeline financeiro com Apache Airflow 2.9 e astronomer-cosmos.
 
 ## Arquitetura
 
@@ -13,7 +13,7 @@ ingest_market ──┘
   staging → intermediate → marts, respeitando o DAG do dbt
 ```
 
-## Pré-requisitos
+## Pre-requisitos
 
 - Docker Desktop instalado e rodando
 - Projeto `financial-dw-dbt` clonado localmente
@@ -21,41 +21,41 @@ ingest_market ──┘
 
 ## Setup
 
-### 1. Configure as variáveis de ambiente
+### 1. Configure as variaveis de ambiente
 
-```bat
-copy .env.airflow.example .env.airflow
+```bash
+cd orchestration
+cp .env.airflow.example .env.airflow
 ```
 
-Edite `.env.airflow` e gere as chaves:
+Edite `.env.airflow` e gere as chaves (com o venv ativo na raiz do projeto):
 
-```bat
-:: Gere AIRFLOW_FERNET_KEY
-.venv\Scripts\activate.bat
+```bash
+# Gere AIRFLOW_FERNET_KEY
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-:: Gere AIRFLOW_SECRET_KEY
+# Gere AIRFLOW_SECRET_KEY
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### 2. Build e inicialização (primeira vez)
+### 2. Build e inicializacao (primeira vez)
 
-```bat
+```bash
 cd orchestration
 
-:: Build da imagem customizada + inicialização do metastore
-docker-compose up airflow-init
+# Build da imagem customizada + inicializacao do metastore
+docker compose up airflow-init
 
-:: Aguarde a mensagem "Init concluído." e então suba os serviços
-docker-compose up -d airflow-webserver airflow-scheduler
+# Aguarde a mensagem "Init concluido." e entao suba os servicos
+docker compose up -d airflow-webserver airflow-scheduler
 ```
 
-### 3. Gere o manifest.json do dbt (necessário para o Cosmos)
+### 3. Gere o manifest.json do dbt (necessario para o Cosmos)
 
-O Cosmos lê o `manifest.json` para criar as tasks. Gere-o antes do primeiro run:
+O Cosmos le o `manifest.json` para criar as tasks. Gere-o antes do primeiro run:
 
-```bat
-docker-compose exec airflow-scheduler \
+```bash
+docker compose exec airflow-scheduler \
   dbt compile \
   --project-dir /opt/airflow/dbt_project \
   --profiles-dir /opt/airflow/dbt_project
@@ -71,29 +71,30 @@ Pass:  admin  (ou o valor definido em .env.airflow)
 
 ### 5. Trigger manual do pipeline
 
-Na UI: DAGs → `financial_pipeline` → botão ▶ (Trigger DAG)
+Na UI: DAGs → `financial_pipeline` → botao ▶ (Trigger DAG)
 
 Ou via CLI:
-```bat
-docker-compose exec airflow-scheduler airflow dags trigger financial_pipeline
+
+```bash
+docker compose exec airflow-scheduler airflow dags trigger financial_pipeline
 ```
 
-## Comandos úteis
+## Comandos uteis
 
-```bat
-:: Ver logs de uma task específica
-docker-compose exec airflow-scheduler \
+```bash
+# Ver logs de uma task especifica
+docker compose exec airflow-scheduler \
   airflow tasks logs financial_pipeline ingest_bacen <data_execucao>
 
-:: Rodar uma task isolada (debug)
-docker-compose exec airflow-scheduler \
+# Rodar uma task isolada (debug)
+docker compose exec airflow-scheduler \
   airflow tasks test financial_pipeline ingest_bacen 2025-01-01
 
-:: Parar tudo (sem apagar dados)
-docker-compose down
+# Parar tudo (sem apagar dados)
+docker compose down
 
-:: Parar e apagar TODOS os dados (DuckDB + Postgres metastore)
-docker-compose down -v
+# Parar e apagar TODOS os dados (DuckDB + Postgres metastore)
+docker compose down -v
 ```
 
 ## Estrutura
@@ -102,9 +103,9 @@ docker-compose down -v
 orchestration/
 ├── Dockerfile                  ← imagem customizada: airflow + dbt + cosmos
 ├── docker-compose.yml          ← postgres + airflow-init + webserver + scheduler
-├── requirements-airflow.txt    ← dependências do container (separado do raiz)
-├── .env.airflow.example        ← template de variáveis (versionado)
-├── .env.airflow                ← valores reais (NÃO versionado)
+├── requirements-airflow.txt    ← dependencias do container (separado do raiz)
+├── .env.airflow.example        ← template de variaveis (versionado)
+├── .env.airflow                ← valores reais (NAO versionado)
 └── dags/
     └── financial_pipeline.py   ← DAG principal com Cosmos TaskGroup
 ```
@@ -112,17 +113,17 @@ orchestration/
 ## Como o Cosmos funciona
 
 1. `dbt compile` gera `dbt_project/target/manifest.json`
-2. O Cosmos lê o manifest e encontra todos os nós do DAG dbt
-3. Para cada nó (model, test, seed, snapshot) cria uma Airflow Task
-4. Replica as dependências do dbt como dependências Airflow (`>>`)
-5. Resultado: visibilidade por modelo na UI, não apenas por comando dbt
+2. O Cosmos le o manifest e encontra todos os nos do DAG dbt
+3. Para cada no (model, test, seed, snapshot) cria uma Airflow Task
+4. Replica as dependencias do dbt como dependencias Airflow (`>>`)
+5. Resultado: visibilidade por modelo na UI, nao apenas por comando dbt
 
 ## Volumes Docker
 
-| Volume | Tipo | Conteúdo | Perdido com `down -v`? |
+| Volume | Tipo | Conteudo | Perdido com `down -v`? |
 |---|---|---|---|
-| `duckdb-data` | Named volume | Banco DuckDB com todos os dados | ✅ Sim |
-| `postgres-data` | Named volume | Metastore do Airflow | ✅ Sim |
-| `../dbt_project` | Bind mount | Código dbt (editável no VSCode) | ❌ Não |
-| `../ingestion` | Bind mount | Scripts Python de ingestão | ❌ Não |
-| `./dags` | Bind mount | DAG files | ❌ Não |
+| `duckdb-data` | Named volume | Banco DuckDB com todos os dados | Sim |
+| `postgres-data` | Named volume | Metastore do Airflow | Sim |
+| `../dbt_project` | Bind mount | Codigo dbt (editavel no VSCode) | Nao |
+| `../ingestion` | Bind mount | Scripts Python de ingestao | Nao |
+| `./dags` | Bind mount | DAG files | Nao |

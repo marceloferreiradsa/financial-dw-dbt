@@ -1,8 +1,8 @@
 version: "3.8"
 
-# ── Bloco reutilizável via âncora YAML ───────────────────────────────────────
-# &airflow-common define o bloco; <<: *airflow-common cola o conteúdo.
-# Usado em webserver, scheduler e init para evitar repetição de ~30 linhas.
+# ── Bloco reutilizavel via ancora YAML ───────────────────────────────────────
+# &airflow-common define o bloco; <<: *airflow-common cola o conteudo.
+# Usado em webserver, scheduler e init para evitar repeticao de ~30 linhas.
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -12,14 +12,14 @@ x-airflow-common: &airflow-common
     # do scheduler. Sem Redis, sem workers separados — certo para este projeto.
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
 
-    # Metastore: onde o Airflow persiste estado interno (histórico, conexões, etc.)
+    # Metastore: onde o Airflow persiste estado interno (historico, conexoes, etc.)
     # Usando Postgres — mais robusto que SQLite (default) para evitar lock errors.
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
 
     # Chave Fernet: criptografa credenciais salvas na UI do Airflow
     AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY}"
 
-    # Chave secreta do Flask: assina cookies de sessão da UI
+    # Chave secreta do Flask: assina cookies de sessao da UI
     AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_SECRET_KEY}"
 
     # Desativa os ~20 DAGs de exemplo que poluem a UI
@@ -28,23 +28,22 @@ x-airflow-common: &airflow-common
     # Onde o scheduler procura arquivos de DAG
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
 
-    # Configuração do Cosmos: usa subprocess para rodar dbt
-    # (mais compatível com todos os adapters do que Python import)
+    # Configuracao do Cosmos: usa subprocess para rodar dbt
     AIRFLOW__COSMOS__DBT_EXECUTABLE_PATH: /home/airflow/.local/bin/dbt
 
-    # Variáveis passadas para os scripts de ingestão e DAG
+    # Variaveis passadas para os scripts de ingestao e DAG
     DUCKDB_PATH: /opt/airflow/data/financial_dw.duckdb
     DBT_PROJECT_DIR: /opt/airflow/dbt_project
     BACEN_START_DATE: "${BACEN_START_DATE:-2020-01-01}"
-    TICKERS: "${TICKERS:-PETR4.SA,VALE3.SA,ITUB4.SA,BBDC4.SA,WEGE3.SA,MGLU3.SA}"
+    TICKERS: "${TICKERS:-PETR4,MGLU3,VALE3,ITUB4}"
 
   volumes:
-    # Bind mounts: código que você edita no VSCode → container vê imediatamente
+    # Bind mounts: codigo editavel no VSCode → container ve imediatamente
     - ../dbt_project:/opt/airflow/dbt_project
     - ../ingestion:/opt/airflow/ingestion
     - ./dags:/opt/airflow/dags
 
-    # Volume nomeado: DuckDB persiste entre restarts, gerenciado pelo Docker
+    # Volume nomeado: DuckDB persiste entre restarts
     - duckdb-data:/opt/airflow/data
 
   depends_on:
@@ -54,7 +53,7 @@ x-airflow-common: &airflow-common
   env_file:
     - .env.airflow
 
-# ── Serviços ──────────────────────────────────────────────────────────────────
+# ── Servicos ──────────────────────────────────────────────────────────────────
 services:
 
   # Metastore do Airflow — guarda todo o estado interno
@@ -73,18 +72,18 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Bootstrap: roda UMA VEZ para criar tabelas no metastore e o usuário admin.
-  # restart: "no" garante que não roda novamente em docker-compose restart.
+  # Bootstrap: roda UMA VEZ para criar tabelas no metastore e o usuario admin.
+  # restart: "no" garante que nao roda novamente em docker compose restart.
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
     command:
       - -c
       - |
-        echo "Aguardando Postgres ficar saudável..."
+        echo "Aguardando Postgres ficar saudavel..."
         airflow db migrate
 
-        echo "Criando usuário admin..."
+        echo "Criando usuario admin..."
         airflow users create \
           --username "${AIRFLOW_ADMIN_USERNAME:-admin}" \
           --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" \
@@ -92,15 +91,15 @@ services:
           --lastname User \
           --role Admin \
           --email "${AIRFLOW_ADMIN_EMAIL:-admin@example.com}" \
-          2>/dev/null || echo "Usuário já existe, pulando criação."
+          2>/dev/null || echo "Usuario ja existe, pulando criacao."
 
-        echo "Criando conexão DuckDB para o Cosmos..."
+        echo "Criando conexao DuckDB para o Cosmos..."
         airflow connections add duckdb_default \
           --conn-type generic \
           --conn-extra "{\"path\": \"/opt/airflow/data/financial_dw.duckdb\"}" \
-          2>/dev/null || echo "Conexão já existe, pulando criação."
+          2>/dev/null || echo "Conexao ja existe, pulando criacao."
 
-        echo "Init concluído."
+        echo "Init concluido."
     restart: "no"
 
   # Webserver: Flask app que serve a UI na porta 8080
@@ -116,9 +115,8 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Scheduler: lê DAG files, decide o que rodar e quando.
-  # Com LocalExecutor, também executa as tasks (sem workers separados).
-  # Não expõe porta — comunicação apenas interna via Postgres.
+  # Scheduler: le DAG files, decide o que rodar e quando.
+  # Com LocalExecutor, tambem executa as tasks (sem workers separados).
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
@@ -135,6 +133,6 @@ volumes:
   postgres-data:
 
   # Banco DuckDB com todos os dados financeiros
-  # ATENÇÃO: 'docker-compose down -v' APAGA este volume e todos os dados.
-  # Use apenas 'docker-compose down' para parar sem perder dados.
+  # ATENCAO: 'docker compose down -v' APAGA este volume e todos os dados.
+  # Use apenas 'docker compose down' para parar sem perder dados.
   duckdb-data:

@@ -1,20 +1,19 @@
 # Separado do requirements.txt da raiz intencionalmente:
-# o container não precisa de sqlfluff, pre-commit, yfinance dev tools etc.
-# Imagens menores = builds mais rápidos = CI mais barato.
+# o container nao precisa de sqlfluff, pre-commit ou dev tools locais.
+# Imagens menores = builds mais rapidos = CI mais barato.
 
 # dbt + adapter DuckDB
 dbt-core==1.9.4
 dbt-duckdb==1.9.2
 
-# Cosmos: integração Airflow + dbt com task-level observability
-# Lê o manifest.json do dbt e gera uma Airflow task por modelo
+# Cosmos: integracao Airflow + dbt com task-level observability
+# Le o manifest.json do dbt e gera uma Airflow task por modelo
 astronomer-cosmos==1.8.0
 
-# Provider SQL genérico (usado pelo Cosmos internamente)
+# Provider SQL generico (usado pelo Cosmos internamente)
 apache-airflow-providers-common-sql==1.14.0
 
-# Dependências dos scripts de ingestão (rodam dentro do container)
-requests==2.32.3
-yfinance==0.2.54
+# Dependencias dos scripts de ingestao (rodam dentro do container)
+requests>=2.32.3
 pandas==2.2.3
 python-dotenv==1.0.1
