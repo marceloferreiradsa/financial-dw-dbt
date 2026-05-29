@@ -1,19 +1,10 @@
-# Separado do requirements.txt da raiz intencionalmente:
-# o container nao precisa de sqlfluff, pre-commit ou dev tools locais.
-# Imagens menores = builds mais rapidos = CI mais barato.
-
-# dbt + adapter DuckDB
-dbt-core==1.9.4
-dbt-duckdb==1.9.2
+# Apenas dependencias do Airflow — dbt e scripts de ingestao
+# ficam no venv isolado /home/airflow/dbt-env (criado no Dockerfile).
+# Essa separacao evita conflitos de dependencia entre Airflow e dbt,
+# conforme recomendado pela documentacao do Astronomer Cosmos.
 
 # Cosmos: integracao Airflow + dbt com task-level observability
-# Le o manifest.json do dbt e gera uma Airflow task por modelo
 astronomer-cosmos==1.8.0
 
 # Provider SQL generico (usado pelo Cosmos internamente)
 apache-airflow-providers-common-sql==1.14.0
-
-# Dependencias dos scripts de ingestao (rodam dentro do container)
-requests>=2.32.3
-pandas==2.2.3
-python-dotenv==1.0.1

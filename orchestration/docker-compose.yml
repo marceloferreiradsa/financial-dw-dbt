@@ -1,5 +1,3 @@
-version: "3.8"
-
 # ── Bloco reutilizavel via ancora YAML ───────────────────────────────────────
 # &airflow-common define o bloco; <<: *airflow-common cola o conteudo.
 # Usado em webserver, scheduler e init para evitar repeticao de ~30 linhas.
@@ -9,11 +7,10 @@ x-airflow-common: &airflow-common
     dockerfile: Dockerfile
   environment: &airflow-common-env
     # Executor: LocalExecutor roda tasks em subprocessos no mesmo container
-    # do scheduler. Sem Redis, sem workers separados — certo para este projeto.
+    # do scheduler. Sem Redis, sem workers separados.
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
 
-    # Metastore: onde o Airflow persiste estado interno (historico, conexoes, etc.)
-    # Usando Postgres — mais robusto que SQLite (default) para evitar lock errors.
+    # Metastore: Postgres para persistir estado interno do Airflow
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
 
     # Chave Fernet: criptografa credenciais salvas na UI do Airflow
@@ -22,14 +19,14 @@ x-airflow-common: &airflow-common
     # Chave secreta do Flask: assina cookies de sessao da UI
     AIRFLOW__WEBSERVER__SECRET_KEY: "${AIRFLOW_SECRET_KEY}"
 
-    # Desativa os ~20 DAGs de exemplo que poluem a UI
+    # Desativa os ~20 DAGs de exemplo
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
 
     # Onde o scheduler procura arquivos de DAG
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
 
-    # Configuracao do Cosmos: usa subprocess para rodar dbt
-    AIRFLOW__COSMOS__DBT_EXECUTABLE_PATH: /home/airflow/.local/bin/dbt
+    # Cosmos: aponta para o dbt no venv isolado
+    AIRFLOW__COSMOS__DBT_EXECUTABLE_PATH: /home/airflow/dbt-env/bin/dbt
 
     # Variaveis passadas para os scripts de ingestao e DAG
     DUCKDB_PATH: /opt/airflow/data/financial_dw.duckdb
@@ -51,12 +48,12 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
   env_file:
-    - .env.airflow
+    - .env
 
 # ── Servicos ──────────────────────────────────────────────────────────────────
 services:
 
-  # Metastore do Airflow — guarda todo o estado interno
+  # Metastore do Airflow
   postgres:
     image: postgres:16-alpine
     environment:
@@ -72,8 +69,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Bootstrap: roda UMA VEZ para criar tabelas no metastore e o usuario admin.
-  # restart: "no" garante que nao roda novamente em docker compose restart.
+  # Bootstrap: roda UMA VEZ para criar tabelas e usuario admin
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
@@ -115,8 +111,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Scheduler: le DAG files, decide o que rodar e quando.
-  # Com LocalExecutor, tambem executa as tasks (sem workers separados).
+  # Scheduler: le DAG files, decide o que rodar e quando
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
@@ -129,10 +124,7 @@ services:
 
 # ── Volumes persistentes ──────────────────────────────────────────────────────
 volumes:
-  # Metastore do Airflow — tabelas internas de estado
   postgres-data:
-
-  # Banco DuckDB com todos os dados financeiros
-  # ATENCAO: 'docker compose down -v' APAGA este volume e todos os dados.
-  # Use apenas 'docker compose down' para parar sem perder dados.
   duckdb-data:
+    # ATENCAO: 'docker compose down -v' APAGA este volume e todos os dados.
+    # Use apenas 'docker compose down' para parar sem perder dados.
